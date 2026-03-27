@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymRats — Hybrid Validation Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+      background: #111827;
+      -webkit-font-smoothing: antialiased;
+    }
+    .phone {
+      width: 375px; height: 812px;
+      background: #0D0D0D;
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 40px 100px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.07), inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+    .screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      overflow: hidden; background: #0D0D0D;
+    }
+    .scr { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+    .scr::-webkit-scrollbar { display: none; }
+    /* Range slider */
+    input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 4px;
+      background: #2a2a2a; border-radius: 2px; outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px;
+      border-radius: 50%; background: #E84545; cursor: pointer;
+      box-shadow: 0 2px 6px rgba(232,69,69,.4);
+    }
+    /* Toggle switch */
+    .sw { position: relative; display: inline-flex; width: 48px; height: 26px; cursor: pointer; }
+    .sw input { opacity: 0; position: absolute; width: 0; height: 0; }
+    .sw-track {
+      position: absolute; inset: 0; border-radius: 26px;
+      background: #333; transition: background .25s; pointer-events: none;
+    }
+    .sw-track::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #555; transition: transform .25s, background .25s;
+    }
+    .sw input:checked + .sw-track { background: rgba(76,175,80,.25); }
+    .sw input:checked + .sw-track::after { transform: translateX(22px); background: #4CAF50; }
+    /* Card press */
+    .card { transition: background .12s; }
+    .card:active { background: #222 !important; }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+
+<body x-data="app()" x-cloak class="min-h-screen flex flex-col items-center py-8 px-4 gap-5">
+
+  <!-- ====== ROLE SWITCHER (outside phone) ====== -->
+  <div class="text-center select-none">
+    <p class="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-2">View Prototype As</p>
+    <div class="inline-flex bg-gray-900 border border-gray-800 rounded-2xl p-1 gap-1 shadow-xl">
+      <template x-for="r in [{id:'submitter',label:'Submitter'},{id:'voter',label:'Voter'},{id:'leader',label:'Leader'}]" :key="r.id">
+        <button @click="currentRole = r.id"
+                class="px-5 py-2 rounded-xl text-sm font-semibold transition-all"
+                :class="currentRole === r.id ? 'bg-[#E84545] text-white shadow-lg shadow-red-900/40' : 'text-gray-500 hover:text-gray-200'"
+                x-text="r.label"></button>
+      </template>
+    </div>
+    <p class="text-gray-600 text-xs mt-2 max-w-xs leading-relaxed" x-text="roleDesc[currentRole]"></p>
+  </div>
+
+  <!-- ====== PHONE FRAME ====== -->
+  <div class="phone">
+
+    <!-- ========================== -->
+    <!-- SCREEN: CHALLENGE FEED     -->
+    <!-- ========================== -->
+    <div x-show="currentScreen === 'feed'" class="screen">
+
+      <!-- Status bar -->
+      <div class="flex justify-between items-center px-6 pt-4 pb-1 flex-shrink-0">
+        <span class="text-white text-xs font-semibold">18:25</span>
+        <div class="flex items-center gap-1.5 text-gray-500">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.26-4.296-15.556 0A1 1 0 01.808 6.808c5.076-5.077 13.308-5.077 18.384 0a1 1 0 01-1.414 1.414zM14.95 11.05a7 7 0 00-9.9 0 1 1 0 01-1.414-1.414 9 9 0 0112.728 0 1 1 0 01-1.414 1.414zM12.12 13.88a3 3 0 00-4.242 0 1 1 0 01-1.415-1.415 5 5 0 017.072 0 1 1 0 01-1.415 1.415zM9 16a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+          <span class="text-xs">58%</span>
+        </div>
+      </div>
+
+      <!-- App header -->
+      <div class="flex items-center justify-between px-5 pb-3 flex-shrink-0">
+        <div class="w-8 h-8 rounded-full bg-[#E84545] flex items-center justify-center shadow-lg shadow-red-900/40 text-base leading-none">
+          😤
+        </div>
+        <h1 class="text-white text-xl font-bold tracking-tight">Test HCI</h1>
+        <div class="flex items-center gap-3">
+          <button class="relative text-gray-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#E84545] rounded-full border border-[#0D0D0D]"></span>
+          </button>
+          <button @click="navigateTo('settings')" class="text-gray-400 active:text-white">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Score banner -->
+      <div class="mx-4 mb-3 bg-[#1A1A1A] rounded-2xl px-5 py-3 flex items-center flex-shrink-0">
+        <div class="flex items-center gap-2 flex-1 justify-center">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+          <div class="text-center">
+            <div class="text-white text-sm font-bold leading-none">1</div>
+            <div class="text-gray-500 text-xs mt-0.5">1st tied</div>
+          </div>
+        </div>
+        <div class="w-px h-8 bg-[#2a2a2a]"></div>
+        <div class="flex items-center gap-2 flex-1 justify-center">
+          <div class="w-7 h-7 rounded-full bg-[#E84545] flex items-center justify-center text-base leading-none shadow shadow-red-900/50">😤</div>
+          <div class="text-center">
+            <div class="text-white text-sm font-bold leading-none">1</div>
+            <div class="text-gray-500 text-xs mt-0.5">You</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity feed grouped by day (scrollable) -->
+      <div class="scr px-4 pb-4">
+        <template x-for="group in feedGroups" :key="group.day">
+          <div class="space-y-2">
+            <div class="text-center text-gray-600 text-xs py-2" x-text="group.day"></div>
+            <template x-for="act in group.items" :key="act.id">
+          <div class="card bg-[#1A1A1A] rounded-2xl px-4 py-3 cursor-pointer"
+               @click="navigateTo('detail', act.id)">
+            <div class="flex items-start gap-3">
+              <!-- Activity image placeholder (circular) -->
+              <div class="w-12 h-12 rounded-full flex-shrink-0 overflow-hidden bg-[#252525]">
+                <img :src="act.image" alt="" class="w-full h-full object-cover" loading="lazy"
+                     @error="$el.src='https://picsum.photos/seed/'+act.id+'00/600/600'" />
+              </div>
+              <!-- Content -->
+              <div class="flex-1 min-w-0">
+                <div class="text-white text-sm font-semibold leading-snug" x-text="act.title"></div>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <!-- User avatar (face emoji circle) -->
+                  <div class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-xs leading-none"
+                       :style="`background:${act.user.avatarColor}`"
+                       x-text="act.user.face"></div>
+                  <span class="text-gray-500 text-xs" x-text="act.user.name"></span>
+                </div>
+                <!-- Status badge row -->
+                <div class="mt-1.5" @click.stop>
+                  <!-- AI Validated -->
+                  <template x-if="act.feedStatus === 'ai_accepted'">
+                    <div class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#4CAF50]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                      <span class="text-[#4CAF50] text-xs font-medium">AI Validated</span>
+                    </div>
+                  </template>
+                  <!-- AI Denied -->
+                  <template x-if="act.feedStatus === 'ai_denied'">
+                    <div class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#F44336]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                      <span class="text-[#F44336] text-xs font-medium">Denied</span>
+                    </div>
+                  </template>
+                  <!-- Voting Open -->
+                  <template x-if="act.feedStatus === 'voting_open'">
+                    <div>
+                      <div class="flex items-center gap-1 mb-1.5">
+                        <svg class="w-3.5 h-3.5 text-[#FFC107]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                        <span class="text-[#FFC107] text-xs font-medium">Voting Open</span>
+                      </div>
+                      <template x-if="currentRole !== 'submitter' && !act.peerVoting.currentUserVoted">
+                        <div class="flex gap-2">
+                          <button @click="castVote(act.id,'valid')"
+                                  class="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/25 active:bg-green-500/25">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z"/></svg>
+                            Valid
+                          </button>
+                          <button @click="castVote(act.id,'invalid')"
+                                  class="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/25 active:bg-red-500/25">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.105-1.79l-.05-.025A4 4 0 0011.055 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z"/></svg>
+                            Not Valid
+                          </button>
+                        </div>
+                      </template>
+                      <template x-if="currentRole !== 'submitter' && act.peerVoting.currentUserVoted">
+                        <span class="text-gray-500 text-xs italic">Vote submitted anonymously</span>
+                      </template>
+                      <template x-if="currentRole === 'submitter'">
+                        <span class="text-[#FFC107]/70 text-xs">Peer review in progress...</span>
+                      </template>
+                    </div>
+                  </template>
+                  <!-- Peer Accepted -->
+                  <template x-if="act.feedStatus === 'peer_accepted'">
+                    <div class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#4CAF50]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                      <span class="text-[#4CAF50] text-xs font-medium">Accepted</span>
+                    </div>
+                  </template>
+                  <!-- Peer Denied -->
+                  <template x-if="act.feedStatus === 'peer_denied'">
+                    <div class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#F44336]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                      <span class="text-[#F44336] text-xs font-medium">Denied</span>
+                    </div>
+                  </template>
+                  <!-- Tie Pending -->
+                  <template x-if="act.feedStatus === 'tie_pending'">
+                    <div class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#FFC107]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                      <span class="text-[#FFC107] text-xs font-medium">Pending Leader Review</span>
+                    </div>
+                  </template>
+                  <!-- Leader Accepted -->
+                  <template x-if="act.feedStatus === 'leader_accepted'">
+                    <div class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#4CAF50]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                      <span class="text-[#4CAF50] text-xs font-medium">Accepted</span>
+                    </div>
+                  </template>
+                  <!-- Leader Denied -->
+                  <template x-if="act.feedStatus === 'leader_denied'">
+                    <div class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#F44336]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                      <span class="text-[#F44336] text-xs font-medium">Denied</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              <!-- Time -->
+              <span class="text-gray-600 text-xs flex-shrink-0 mt-0.5" x-text="act.time"></span>
+            </div>
+          </div>
+        </template>
+          </div>
+        </template>
+      </div>
+
+      <!-- FAB -->
+      <button @click="navigateTo('checkin')"
+              class="absolute bottom-20 right-5 z-10 w-14 h-14 bg-[#E84545] rounded-full flex items-center justify-center shadow-2xl shadow-red-900/50 active:scale-95 transition-transform">
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      </button>
+
+      <!-- Bottom nav -->
+      <div class="flex-shrink-0 bg-[#0D0D0D] border-t border-[#1E1E1E] flex justify-around items-center px-4 pt-2 pb-6">
+        <button class="flex flex-col items-center gap-1 flex-1 py-1">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          <span class="text-white text-xs">Details</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 flex-1 py-1">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <span class="text-gray-600 text-xs">Rankings</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 flex-1 py-1">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          <span class="text-gray-600 text-xs">Chat</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ====== TUTORIAL OVERLAY (inside phone, absolute) ====== -->
+    <div x-show="tutorialStep > 0 && tutorialStep <= 4 && currentScreen === 'feed'"
+         class="absolute inset-0 z-40 pointer-events-none"
+         style="display:none;">
+
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/60 pointer-events-auto" @click="tutorialStep = 0"></div>
+
+      <!-- ── STEP 1: Role switcher (above phone) ── -->
+      <template x-if="tutorialStep === 1">
+        <div class="absolute pointer-events-auto" style="top:24px;left:16px;right:16px;">
+          <div class="bg-[#1E1E1E] border border-[#E84545]/40 rounded-2xl p-4 shadow-2xl">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-[#E84545] text-white text-xs font-bold px-2 py-0.5 rounded-full">1 / 4</span>
+              <span class="text-white text-sm font-semibold">Choose your role</span>
+            </div>
+            <p class="text-gray-400 text-xs leading-relaxed mb-3">Tap <span class="text-white font-medium">Submitter</span>, <span class="text-white font-medium">Voter</span>, or <span class="text-white font-medium">Leader</span> in the switcher <span class="text-[#E84545] font-medium">↑ above this screen</span> to change perspective.</p>
+            <div class="flex gap-2">
+              <button @click="tutorialStep = 0" class="flex-1 py-2 rounded-xl text-gray-500 text-xs border border-[#333]">Skip all</button>
+              <button @click="tutorialStep = 2" class="flex-1 py-2 rounded-xl bg-[#E84545] text-white text-xs font-semibold">Next →</button>
+            </div>
+          </div>
+          <!-- Arrow pointing up out of phone -->
+          <div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:9px solid #2a2a2a;position:absolute;top:-9px;left:50%;transform:translateX(-50%);"></div>
+        </div>
+      </template>
+
+      <!-- ── STEP 2: Status badges ── -->
+      <template x-if="tutorialStep === 2">
+        <div class="absolute pointer-events-auto" style="top:285px;left:16px;right:16px;">
+          <!-- Highlight ring on first card's badge — larger ellipse -->
+          <div class="absolute pointer-events-none" style="top:-44px;left:66px;width:88px;height:30px;border:2px solid #E84545;border-radius:15px;box-shadow:0 0 0 4px rgba(232,69,69,0.15);"></div>
+          <!-- Arrow pointing up toward badge -->
+          <div class="absolute" style="top:-13px;left:100px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #2a2a2a;"></div>
+          <div class="bg-[#1E1E1E] border border-[#E84545]/40 rounded-2xl p-4 shadow-2xl">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-[#E84545] text-white text-xs font-bold px-2 py-0.5 rounded-full">2 / 4</span>
+              <span class="text-white text-sm font-semibold">Read the status badges</span>
+            </div>
+            <p class="text-gray-400 text-xs leading-relaxed mb-3"><span class="text-green-400 font-medium">Green</span> = accepted · <span class="text-red-400 font-medium">Red</span> = denied · <span class="text-yellow-400 font-medium">Amber</span> = in review. <span class="text-white">Tap any card</span> to see the full validation details.</p>
+            <div class="flex gap-2">
+              <button @click="tutorialStep = 0" class="flex-1 py-2 rounded-xl text-gray-500 text-xs border border-[#333]">Skip all</button>
+              <button @click="tutorialStep = 3" class="flex-1 py-2 rounded-xl bg-[#E84545] text-white text-xs font-semibold">Next →</button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ── STEP 3: Settings 3-dots ── -->
+      <template x-if="tutorialStep === 3">
+        <div class="absolute pointer-events-auto" style="top:84px;left:16px;right:16px;">
+          <!-- Highlight ring around 3-dots button (center ~y:62, right:16px, 28×28) -->
+          <div class="absolute pointer-events-none" style="top:-48px;right:0px;width:28px;height:28px;border:2px solid #E84545;border-radius:50%;box-shadow:0 0 0 4px rgba(232,69,69,0.15);"></div>
+          <!-- Arrow pointing up-right toward button -->
+          <div class="absolute" style="top:-14px;right:8px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #2a2a2a;"></div>
+          <div class="bg-[#1E1E1E] border border-[#E84545]/40 rounded-2xl p-4 shadow-2xl">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-[#E84545] text-white text-xs font-bold px-2 py-0.5 rounded-full">3 / 4</span>
+              <span class="text-white text-sm font-semibold">Open Challenge Settings</span>
+            </div>
+            <p class="text-gray-400 text-xs leading-relaxed mb-3">Tap the <span class="text-white font-medium">⋯ button ↑ above</span> to explore the validation rules. Switch to <span class="text-white font-medium">Leader</span> to edit them.</p>
+            <div class="flex gap-2">
+              <button @click="tutorialStep = 0" class="flex-1 py-2 rounded-xl text-gray-500 text-xs border border-[#333]">Skip all</button>
+              <button @click="tutorialStep = 4" class="flex-1 py-2 rounded-xl bg-[#E84545] text-white text-xs font-semibold">Next →</button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ── STEP 4: FAB new check-in ── -->
+      <template x-if="tutorialStep === 4">
+        <div class="absolute pointer-events-auto" style="bottom:158px;left:16px;right:84px;">
+          <!-- Highlight ring around FAB (bottom:80px right:20px, 56×56) -->
+          <div class="absolute pointer-events-none" style="bottom:-76px;right:-66px;width:56px;height:56px;border:2px solid #E84545;border-radius:50%;box-shadow:0 0 0 4px rgba(232,69,69,0.15);"></div>
+          <!-- Arrow pointing down-right toward FAB -->
+          <div class="absolute" style="bottom:-12px;right:10px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:7px solid #2a2a2a;"></div>
+          <div class="bg-[#1E1E1E] border border-[#E84545]/40 rounded-2xl p-4 shadow-2xl">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-[#E84545] text-white text-xs font-bold px-2 py-0.5 rounded-full">4 / 4</span>
+              <span class="text-white text-sm font-semibold">Post a check-in</span>
+            </div>
+            <p class="text-gray-400 text-xs leading-relaxed mb-3">Switch to <span class="text-white font-medium">Submitter</span> and tap the <span class="text-[#E84545] font-bold">+</span> button <span class="text-[#E84545]">↘ below</span> to submit an activity and see the AI pre-check in action.</p>
+            <div class="flex gap-2">
+              <button @click="tutorialStep = 0" class="flex-1 py-2 rounded-xl bg-[#E84545] text-white text-xs font-semibold">Got it ✓</button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+    </div>
+
+    <!-- ========================== -->
+    <!-- SCREEN: NEW CHECK-IN       -->
+    <!-- ========================== -->
+    <div x-show="currentScreen === 'checkin'" class="screen" x-data="{ showTitleError: false }">
+
+      <!-- Status bar -->
+      <div class="flex justify-between items-center px-6 pt-4 pb-1 flex-shrink-0">
+        <span class="text-white text-xs font-semibold">18:25</span>
+        <span class="text-gray-500 text-xs">58%</span>
+      </div>
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 pb-3 flex-shrink-0 border-b border-[#1E1E1E]">
+        <button @click="goBack()" class="text-gray-400 active:text-white w-8">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <span class="text-white font-semibold">New check-in</span>
+        <button @click="if(!newCheckin.title.trim()){showTitleError=true}else{showTitleError=false;submitCheckin()}"
+                :class="newCheckin.title.trim() ? 'text-[#E84545] active:opacity-70' : 'text-gray-600'"
+                class="font-semibold text-sm">Post</button>
+      </div>
+
+      <div class="scr">
+        <!-- Sharing + AI Ready pills -->
+        <div class="flex gap-3 px-4 py-3">
+          <div class="flex-1 bg-[#1A1A1A] rounded-xl p-3 text-center">
+            <div class="flex justify-center gap-1 mb-1.5">
+              <div class="w-6 h-6 rounded-full bg-[#E84545] flex items-center justify-center text-white text-xs font-bold">D</div>
+              <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">T</div>
+            </div>
+            <div class="text-white text-xs font-medium leading-tight">Sharing to</div>
+            <div class="text-gray-500 text-xs">2 groups, profile</div>
+          </div>
+          <div class="flex-1 bg-[#1A1A1A] rounded-xl p-3 text-center">
+            <div class="flex justify-center mb-1.5">
+              <svg class="w-6 h-6 text-[#4CAF50]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <div class="text-[#4CAF50] text-xs font-medium leading-tight">AI Ready</div>
+            <div class="text-gray-500 text-xs">Will validate on submit</div>
+          </div>
+        </div>
+
+        <!-- Attachment button -->
+        <div class="px-4 mb-1">
+          <button class="w-full h-10 border border-dashed border-[#333] rounded-xl flex items-center justify-center gap-2 text-gray-600 text-xs active:border-gray-500">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+            Add photo or video
+          </button>
+        </div>
+
+        <!-- Form fields -->
+        <div class="px-4">
+          <div class="py-3 border-b border-[#1E1E1E]">
+            <input type="text" placeholder="Title" x-model="newCheckin.title"
+                   @input="if(newCheckin.title.trim()) showTitleError = false"
+                   :class="showTitleError ? 'placeholder-red-500/60' : 'placeholder-gray-600'"
+                   class="w-full bg-transparent text-white text-sm outline-none" />
+            <p x-show="showTitleError" class="text-red-400/80 text-xs mt-1">Title is required</p>
+          </div>
+          <div class="py-3 border-b border-[#1E1E1E]">
+            <textarea placeholder="Description (optional)" x-model="newCheckin.description" rows="2"
+                      class="w-full bg-transparent text-white placeholder-gray-600 text-sm outline-none resize-none"></textarea>
+          </div>
+          <div class="py-3 border-b border-[#1E1E1E] flex gap-6">
+            <div>
+              <div class="text-gray-600 text-xs mb-1">Day</div>
+              <div class="text-white text-sm">2026-03-25</div>
+            </div>
+            <div>
+              <div class="text-gray-600 text-xs mb-1">Start time</div>
+              <div class="text-white text-sm">6:25 pm</div>
+            </div>
+          </div>
+          <div class="py-3 border-b border-[#1E1E1E] flex items-center gap-2 text-gray-500">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+            <span class="flex-1 text-sm">Location</span>
+            <span class="text-gray-600 text-sm">None</span>
+          </div>
+          <div class="py-3 border-b border-[#1E1E1E] flex items-center justify-between">
+            <span class="text-gray-500 text-sm">Activity</span>
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div class="py-3 border-b border-[#1E1E1E]">
+            <span class="text-gray-500 text-sm">Duration</span>
+          </div>
+          <div class="py-3 border-b border-[#1E1E1E]">
+            <span class="text-gray-500 text-sm">Distance (kilometers)</span>
+          </div>
+        </div>
+
+        <!-- AI Validation Preview Panel -->
+        <div class="mx-4 mt-4 mb-6 bg-[#1A1A1A] rounded-2xl p-4 border border-[#4CAF50]/20">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4 text-[#4CAF50]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <span class="text-[#4CAF50] text-sm font-semibold">AI Validation Preview</span>
+          </div>
+          <p class="text-gray-500 text-xs mb-3 leading-relaxed">Your activity will be automatically validated when submitted. The AI checks:</p>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-[#4CAF50] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              <span class="text-gray-300 text-xs">Activity type matches challenge category</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-[#4CAF50] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              <span class="text-gray-300 text-xs">Duration meets minimum requirements</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-[#4CAF50] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              <span class="text-gray-300 text-xs">Fitness data consistency (if connected)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-[#4CAF50] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              <span class="text-gray-300 text-xs">Image/media matches activity description</span>
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-t border-[#2a2a2a]">
+            <p class="text-gray-600 text-xs">Full AI analysis will be visible after the check-in is posted to the feed.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom nav -->
+      <div class="flex-shrink-0 bg-[#0D0D0D] border-t border-[#1E1E1E] flex justify-around items-center px-4 pt-2 pb-6">
+        <button class="flex flex-col items-center gap-1 flex-1 py-1">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          <span class="text-white text-xs">Details</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 flex-1 py-1">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <span class="text-gray-600 text-xs">Rankings</span>
+        </button>
+        <button class="flex flex-col items-center gap-1 flex-1 py-1">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          <span class="text-gray-600 text-xs">Chat</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================== -->
+    <!-- SCREEN: ACTIVITY DETAIL    -->
+    <!-- ========================== -->
+    <div x-show="currentScreen === 'detail'" class="screen">
+      <template x-if="selectedActivity">
+        <div class="screen" x-data="{ imageFullscreen: false }">
+          <!-- Status bar -->
+          <div class="flex justify-between items-center px-6 pt-4 pb-1 flex-shrink-0">
+            <span class="text-white text-xs font-semibold">00:01</span>
+            <span class="text-gray-500 text-xs">50%</span>
+          </div>
+          <!-- Header -->
+          <div class="flex items-center justify-between px-5 pb-3 flex-shrink-0">
+            <button @click="goBack()" class="text-white active:text-gray-400 w-8">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex-1"></div>
+            <button class="text-gray-500">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"/></svg>
+            </button>
+          </div>
+
+          <!-- Scrollable detail content -->
+          <div class="scr">
+            <!-- Activity image (tap to fullscreen) -->
+            <div class="w-full relative flex-shrink-0 overflow-hidden cursor-pointer"
+                 style="height: 260px;"
+                 @click="imageFullscreen = true">
+              <img :src="selectedActivity.image" alt=""
+                   class="w-full h-full object-cover"
+                   @error="$el.src='https://picsum.photos/seed/'+selectedActivity.id+'00/600/600'" />
+              <!-- Gradient overlay bottom -->
+              <div class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#0D0D0D] to-transparent pointer-events-none"></div>
+              <!-- Tap hint -->
+              <div class="absolute top-3 right-3 bg-black/40 rounded-full p-1.5 pointer-events-none">
+                <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"/></svg>
+              </div>
+            </div>
+
+            <!-- Fullscreen image overlay -->
+            <div x-show="imageFullscreen"
+                 @click="imageFullscreen = false"
+                 class="fixed inset-0 z-50 bg-black flex items-center justify-center cursor-pointer"
+                 style="display:none;">
+              <img :src="selectedActivity.image" alt=""
+                   class="max-w-full max-h-full object-contain"
+                   @error="$el.src='https://picsum.photos/seed/'+selectedActivity.id+'00/600/600'" />
+              <button class="absolute top-5 right-5 w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <!-- Mocked results notice (new submissions only) -->
+            <template x-if="selectedActivity.isMocked">
+              <div class="mx-4 mt-3 mb-1 flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2.5">
+                <svg class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                <p class="text-amber-300/80 text-xs leading-relaxed">Prototype only — AI results and validation status shown here are mocked. No real AI analysis was performed on this submission.</p>
+              </div>
+            </template>
+
+            <!-- User info bar -->
+            <div class="flex items-center gap-3 px-4 py-3 border-b border-[#1E1E1E]">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center text-lg leading-none flex-shrink-0"
+                   :style="`background:${selectedActivity.user.avatarColor}`"
+                   x-text="selectedActivity.user.face"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-white text-sm font-semibold" x-text="selectedActivity.user.name"></div>
+                <div class="text-gray-500 text-xs" x-text="selectedActivity.time + ' · ' + selectedActivity.activityType"></div>
+              </div>
+              <button class="text-gray-500 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/></svg>
+              </button>
+            </div>
+
+            <!-- Metadata bar -->
+            <div class="flex items-center gap-4 px-4 py-3 border-b border-[#1E1E1E]">
+              <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="text-gray-300 text-sm" x-text="selectedActivity.duration"></span>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-[#E84545] flex items-center justify-center text-base">😤</div>
+              <button class="text-gray-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+              </button>
+              <span class="text-gray-500 text-xs flex-1 truncate" x-text="selectedActivity.description || ''"></span>
+            </div>
+
+            <!-- Comment input bar -->
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[#1E1E1E]">
+              <div class="w-7 h-7 rounded-full bg-[#E84545]/70 flex items-center justify-center text-white text-xs font-bold">U</div>
+              <input type="text" placeholder="Aa" class="flex-1 bg-transparent text-gray-400 text-sm outline-none placeholder-gray-700" />
+              <button class="text-gray-600 text-sm">Send</button>
+            </div>
+
+            <!-- ===================================== -->
+            <!-- VARIANT A: AI ACCEPTED                -->
+            <!-- ===================================== -->
+            <template x-if="selectedActivity.feedStatus === 'ai_accepted'">
+              <div class="px-4 py-4 space-y-3">
+                <div class="bg-[#1A1A1A] rounded-2xl p-4 border border-[#4CAF50]/25">
+                  <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-5 h-5 text-[#4CAF50]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <span class="text-[#4CAF50] font-semibold text-sm">AI Validation Confirmation</span>
+                  </div>
+                  <p class="text-gray-400 text-xs mb-3 leading-relaxed">Your activity has been automatically validated against the challenge rules.</p>
+                  <p class="text-gray-500 text-xs mb-2">This log was valid because:</p>
+                  <div class="space-y-2">
+                    <template x-for="check in selectedActivity.aiResult.checks" :key="check.label">
+                      <div class="flex items-start gap-2">
+                        <svg class="w-4 h-4 text-[#4CAF50] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span class="text-gray-300 text-xs leading-relaxed" x-text="check.label"></span>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="mt-3 pt-3 border-t border-[#2a2a2a]">
+                    <p class="text-[#4CAF50] text-xs font-medium">All challenge requirements have been met. Well done!</p>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===================================== -->
+            <!-- VARIANT B: AI DENIED                  -->
+            <!-- ===================================== -->
+            <template x-if="selectedActivity.feedStatus === 'ai_denied'">
+              <div class="px-4 py-4 space-y-3">
+                <div class="bg-[#1A1A1A] rounded-2xl p-4 border border-[#F44336]/25">
+                  <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-5 h-5 text-[#F44336]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    <span class="text-[#F44336] font-semibold text-sm">AI Validation Denied</span>
+                  </div>
+                  <p class="text-gray-400 text-xs mb-3 leading-relaxed">Your activity could not be validated against the challenge rules.</p>
+                  <p class="text-gray-500 text-xs mb-2">This log was found invalid because:</p>
+                  <div class="space-y-2.5">
+                    <template x-for="check in selectedActivity.aiResult.checks" :key="check.label">
+                      <div class="flex items-start gap-2">
+                        <template x-if="check.passed">
+                          <svg class="w-4 h-4 text-[#4CAF50] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        </template>
+                        <template x-if="!check.passed">
+                          <svg class="w-4 h-4 text-[#F44336] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                        </template>
+                        <div>
+                          <span class="text-xs leading-relaxed" :class="check.passed ? 'text-gray-400' : 'text-[#F44336]/90'" x-text="check.label"></span>
+                          <template x-if="check.detail && !check.passed">
+                            <div class="text-[#F44336]/60 text-xs mt-0.5 italic" x-text="check.detail"></div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="mt-3 pt-3 border-t border-[#2a2a2a]">
+                    <p class="text-[#F44336] text-xs">Challenge requirements were not met.</p>
+                    <p class="text-gray-600 text-xs mt-1">To request a new review, delete this check-in and resubmit with clearer evidence.</p>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ===================================== -->
+            <!-- VARIANT C+D: VOTING OPEN              -->
+            <!-- ===================================== -->
+            <template x-if="selectedActivity.feedStatus === 'voting_open'">
+              <div class="px-4 py-4 space-y-3">
+                <!-- AI Needs Review card -->
+                <div class="bg-[#1A1A1A] rounded-2xl p-4 border border-[#FFC107]/20">
+                  <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-5 h-5 text-[#FFC107]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <span class="text-[#FFC107] font-semibold text-sm">AI Needs Review</span>
+                  </div>
+                  <p class="text-gray-400 text-xs mb-3 leading-relaxed" x-text="selectedActivity.aiResult.summary"></p>
+                  <div class="space-y-2.5">
+                    <template x-for="check in selectedActivity.aiResult.checks" :key="check.label">
+                      <div class="flex items-start gap-2">
+                        <template x-if="check.passed">
+                          <svg class="w-4 h-4 text-[#4CAF50] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        </template>
+                        <template x-if="!check.passed">
+                          <svg class="w-4 h-4 text-[#FFC107] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        </template>
+                        <div>
+                          <span class="text-xs leading-relaxed" :class="check.passed ? 'text-gray-400' : 'text-[#FFC107]/80'" x-text="check.label"></span>
+                          <template x-if="check.detail && !check.passed">
+                            <div class="text-[#FFC107]/50 text-xs mt-0.5 italic" x-text="check.detail"></div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Peer voting section -->
+                <div class="bg-[#1A1A1A] rounded-2xl p-4 border border-[#FFC107]/15">
+                  <div class="flex items-center gap-2 mb-1.5">
+                    <svg class="w-4 h-4 text-[#FFC107]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                    <span class="text-[#FFC107] font-semibold text-sm">Peer voting period open!</span>
+                  </div>
+                  <p class="text-gray-500 text-xs mb-1">Votes collected until <span class="text-gray-300" x-text="selectedActivity.peerVoting.deadline"></span>.</p>
+                  <p class="text-gray-600 text-xs mb-3">
+                    <span x-text="selectedActivity.peerVoting.validVotes + selectedActivity.peerVoting.invalidVotes"></span> of
+                    <span x-text="selectedActivity.peerVoting.totalVoters"></span> members voted
+                  </p>
+
+                  <!-- SUBMITTER view: banner -->
+                  <template x-if="currentRole === 'submitter'">
+                    <div class="bg-[#FFC107]/8 border border-[#FFC107]/20 rounded-xl px-4 py-3 text-center">
+                      <p class="text-[#FFC107] text-xs font-semibold">Voting in progress</p>
+                      <p class="text-gray-500 text-xs mt-1">You cannot vote on your own check-in.</p>
+                      <p class="text-gray-600 text-xs mt-1">Use the comments below to provide additional context to voters.</p>
+                    </div>
+                  </template>
+
+                  <!-- VOTER / LEADER view: voting buttons or voted state -->
+                  <template x-if="currentRole !== 'submitter'">
+                    <div>
+                      <template x-if="!selectedActivity.peerVoting.currentUserVoted">
+                        <div class="space-y-2.5">
+                          <p class="text-gray-500 text-xs">Review the details above and cast your anonymous vote:</p>
+                          <div class="flex gap-3">
+                            <button @click="castVote(selectedActivity.id,'valid')"
+                                    class="flex-1 flex items-center justify-center gap-2 bg-green-500/15 hover:bg-green-500/25 border border-green-500/25 text-green-400 text-sm font-semibold py-3 rounded-xl transition-colors active:bg-green-500/30">
+                              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z"/></svg>
+                              Valid
+                            </button>
+                            <button @click="castVote(selectedActivity.id,'invalid')"
+                                    class="flex-1 flex items-center justify-center gap-2 bg-red-500/15 hover:bg-red-500/25 border border-red-500/25 text-red-400 text-sm font-semibold py-3 rounded-xl transition-colors active:bg-red-500/30">
+                              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.105-1.79l-.05-.025A4 4 0 0011.055 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z"/></svg>
+                              Not Valid
+                            </button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="selectedActivity.peerVoting.currentUserVoted">
+                        <div class="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-center">
+                          <p class="text-green-400 text-xs font-semibold">Vote submitted</p>
+                          <p class="text-gray-500 text-xs mt-1">Your vote has been recorded anonymously.</p>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Comments section -->
+                <template x-if="selectedActivity.comments && selectedActivity.comments.length > 0">
+                  <div class="space-y-2">
+                    <div class="text-gray-600 text-xs px-1 font-medium uppercase tracking-wider">Comments</div>
+                    <template x-for="comment in selectedActivity.comments" :key="comment.time">
+                      <div class="bg-[#1A1A1A] rounded-xl px-3 py-2.5 flex items-start gap-2.5">
+                        <div class="w-7 h-7 rounded-full bg-[#E84545] flex-shrink-0 flex items-center justify-center text-white text-xs font-bold" x-text="comment.user.charAt(0)"></div>
+                        <div class="flex-1 min-w-0">
+                          <span class="text-white text-xs font-semibold" x-text="comment.user + ': '"></span>
+                          <span class="text-gray-400 text-xs leading-relaxed" x-text="comment.text"></span>
+                          <div class="text-gray-700 text-xs mt-1" x-text="comment.time"></div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+
+                <div class="h-4"></div>
+              </div>
+            </template>
+
+            <!-- ===================================== -->
+            <!-- VARIANT E: PEER RESOLVED              -->
+            <!-- ===================================== -->
+            <template x-if="selectedActivity.feedStatus === 'peer_accepted' || selectedActivity.feedStatus === 'peer_denied'">
+              <div class="px-4 py-4 space-y-3">
+                <!-- AI context card (compact) -->
+                <div class="bg-[#1A1A1A] rounded-2xl p-3.5 border border-[#FFC107]/15">
+                  <div class="flex items-center gap-2 mb-1.5">
+                    <svg class="w-3.5 h-3.5 text-[#FFC107]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <span class="text-[#FFC107] text-xs font-semibold">AI flagged for peer review</span>
+                  </div>
+                  <p class="text-gray-500 text-xs leading-relaxed" x-text="selectedActivity.aiResult.summary"></p>
+                </div>
+                <!-- Peer result card -->
+                <div class="bg-[#1A1A1A] rounded-2xl p-4"
+                     :class="selectedActivity.feedStatus === 'peer_accepted' ? 'border border-[#4CAF50]/25' : 'border border-[#F44336]/25'">
+                  <div class="flex items-center gap-2 mb-2">
+                    <template x-if="selectedActivity.feedStatus === 'peer_accepted'">
+                      <svg class="w-5 h-5 text-[#4CAF50]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </template>
+                    <template x-if="selectedActivity.feedStatus === 'peer_denied'">
+                      <svg class="w-5 h-5 text-[#F44336]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    </template>
+                    <span class="font-semibold text-sm"
+                          :class="selectedActivity.feedStatus === 'peer_accepted' ? 'text-[#4CAF50]' : 'text-[#F44336]'"
+                          x-text="selectedActivity.feedStatus === 'peer_accepted' ? 'Validated through majority vote' : 'Peer consensus denied check-in!'"></span>
+                  </div>
+                  <p class="text-gray-400 text-xs mb-3 leading-relaxed"
+                     x-text="selectedActivity.feedStatus === 'peer_accepted'
+                       ? `A majority of voters confirmed this activity on ${selectedActivity.peerVoting.resolvedDate}.`
+                       : `A majority vote declined this check-in on ${selectedActivity.peerVoting.resolvedDate}.`"></p>
+                  <!-- Vote tally -->
+                  <div class="bg-black/30 rounded-xl p-3">
+                    <div class="text-gray-600 text-xs mb-2 font-medium">Final vote tally</div>
+                    <div class="flex items-center gap-4">
+                      <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-[#4CAF50]"></div>
+                        <span class="text-[#4CAF50] font-bold text-base" x-text="selectedActivity.peerVoting.validVotes"></span>
+                        <span class="text-gray-500 text-xs">Valid</span>
+                      </div>
+                      <div class="w-px h-4 bg-[#2a2a2a]"></div>
+                      <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-[#F44336]"></div>
+                        <span class="text-[#F44336] font-bold text-base" x-text="selectedActivity.peerVoting.invalidVotes"></span>
+                        <span class="text-gray-500 text-xs">Not Valid</span>
+                      </div>
+                      <span class="ml-auto text-gray-700 text-xs" x-text="`of ${selectedActivity.peerVoting.totalVoters} voters`"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="h-4"></div>
+              </div>
+            </template>
+
+            <!-- ===================================== -->
+            <!-- VARIANT F: TIE / LEADER               -->
+            <!-- ===================================== -->
+            <template x-if="selectedActivity.feedStatus === 'tie_pending' || selectedActivity.feedStatus === 'leader_accepted' || selectedActivity.feedStatus === 'leader_denied'">
+              <div class="px-4 py-4 space-y-3">
+                <!-- AI context card -->
+                <div class="bg-[#1A1A1A] rounded-2xl p-3.5 border border-[#FFC107]/15">
+                  <div class="flex items-center gap-2 mb-1.5">
+                    <svg class="w-3.5 h-3.5 text-[#FFC107]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <span class="text-[#FFC107] text-xs font-semibold">AI flagged for peer review</span>
+                  </div>
+                  <p class="text-gray-500 text-xs leading-relaxed" x-text="selectedActivity.aiResult.summary"></p>
+                </div>
+
+                <!-- Peer tie card -->
+                <div class="bg-[#1A1A1A] rounded-2xl p-4 border border-[#FFC107]/20">
+                  <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-5 h-5 text-[#FFC107]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                    <span class="text-[#FFC107] font-semibold text-sm">Peer vote tied</span>
+                  </div>
+                  <!-- Vote tally -->
+                  <div class="bg-black/30 rounded-xl p-3 mb-3">
+                    <div class="flex items-center gap-4">
+                      <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-[#4CAF50]"></div>
+                        <span class="text-[#4CAF50] font-bold text-base" x-text="selectedActivity.peerVoting.validVotes"></span>
+                        <span class="text-gray-500 text-xs">Valid</span>
+                      </div>
+                      <div class="w-px h-4 bg-[#2a2a2a]"></div>
+                      <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-[#F44336]"></div>
+                        <span class="text-[#F44336] font-bold text-base" x-text="selectedActivity.peerVoting.invalidVotes"></span>
+                        <span class="text-gray-500 text-xs">Not Valid</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- LEADER view (still pending): decision buttons -->
+                  <template x-if="currentRole === 'leader' && selectedActivity.feedStatus === 'tie_pending'">
+                    <div>
+                      <p class="text-gray-400 text-xs mb-3 leading-relaxed">The peer vote is tied. As challenge leader, your decision is final. Review the check-in carefully before voting:</p>
+                      <div class="flex gap-3">
+                        <button @click="leaderDecide(selectedActivity.id, 'valid')"
+                                class="flex-1 bg-green-500/15 hover:bg-green-500/25 border border-green-500/25 text-green-400 font-semibold text-sm py-3 rounded-xl transition-colors active:bg-green-500/30">
+                          Approve
+                        </button>
+                        <button @click="leaderDecide(selectedActivity.id, 'invalid')"
+                                class="flex-1 bg-red-500/15 hover:bg-red-500/25 border border-red-500/25 text-red-400 font-semibold text-sm py-3 rounded-xl transition-colors active:bg-red-500/30">
+                          Deny
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- NON-LEADER view (still pending): waiting banner -->
+                  <template x-if="currentRole !== 'leader' && selectedActivity.feedStatus === 'tie_pending'">
+                    <div class="bg-[#FFC107]/8 border border-[#FFC107]/15 rounded-xl px-4 py-3 text-center">
+                      <p class="text-[#FFC107] text-xs font-semibold">Awaiting leader decision</p>
+                      <p class="text-gray-500 text-xs mt-1 leading-relaxed">The challenge leader has been notified and will cast the deciding vote.</p>
+                      <p class="text-gray-600 text-xs mt-1">This check-in does not count toward the leaderboard until resolved.</p>
+                    </div>
+                  </template>
+
+                  <!-- Leader already decided -->
+                  <template x-if="selectedActivity.feedStatus === 'leader_accepted' || selectedActivity.feedStatus === 'leader_denied'">
+                    <div class="rounded-xl px-4 py-3"
+                         :class="selectedActivity.feedStatus === 'leader_accepted' ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'">
+                      <div class="flex items-center gap-2 mb-1">
+                        <svg class="w-4 h-4 flex-shrink-0" :class="selectedActivity.feedStatus === 'leader_accepted' ? 'text-green-400' : 'text-red-400'" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" clip-rule="evenodd"/></svg>
+                        <span class="text-xs font-semibold"
+                              :class="selectedActivity.feedStatus === 'leader_accepted' ? 'text-green-400' : 'text-red-400'"
+                              x-text="selectedActivity.feedStatus === 'leader_accepted' ? 'Leader approved this check-in' : 'Leader denied this check-in'"></span>
+                      </div>
+                      <p class="text-gray-500 text-xs leading-relaxed">The challenge leader cast the deciding vote to resolve the tied peer review.</p>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Comments if any -->
+                <template x-if="selectedActivity.comments && selectedActivity.comments.length > 0">
+                  <div class="space-y-2">
+                    <div class="text-gray-600 text-xs px-1 font-medium uppercase tracking-wider">Comments</div>
+                    <template x-for="comment in selectedActivity.comments" :key="comment.time">
+                      <div class="bg-[#1A1A1A] rounded-xl px-3 py-2.5 flex items-start gap-2.5">
+                        <div class="w-7 h-7 rounded-full bg-[#E84545] flex-shrink-0 flex items-center justify-center text-white text-xs font-bold" x-text="comment.user.charAt(0)"></div>
+                        <div class="flex-1 min-w-0">
+                          <span class="text-white text-xs font-semibold" x-text="comment.user + ': '"></span>
+                          <span class="text-gray-400 text-xs leading-relaxed" x-text="comment.text"></span>
+                          <div class="text-gray-700 text-xs mt-1" x-text="comment.time"></div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+
+                <div class="h-4"></div>
+              </div>
+            </template>
+
+          </div><!-- end scr -->
+        </div><!-- end inner screen div -->
+      </template>
+    </div>
+
+    <!-- ========================== -->
+    <!-- SCREEN: SETTINGS           -->
+    <!-- ========================== -->
+    <div x-show="currentScreen === 'settings'" class="screen">
+
+      <!-- Status bar -->
+      <div class="flex justify-between items-center px-6 pt-4 pb-1 flex-shrink-0">
+        <span class="text-white text-xs font-semibold">18:25</span>
+        <span class="text-gray-500 text-xs">58%</span>
+      </div>
+
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-5 pb-4 flex-shrink-0 border-b border-[#1E1E1E]">
+        <button @click="goBack()" class="text-gray-400 active:text-white w-8">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <span class="text-white font-semibold text-base flex-1">Challenge Settings</span>
+        <template x-if="currentRole !== 'leader'">
+          <span class="flex items-center gap-1 bg-[#252525] text-gray-500 text-xs px-2.5 py-1 rounded-full border border-[#333]">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+            Read-only
+          </span>
+        </template>
+        <template x-if="currentRole === 'leader'">
+          <span class="flex items-center gap-1 bg-[#E84545]/10 text-[#E84545] text-xs px-2.5 py-1 rounded-full border border-[#E84545]/20">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" clip-rule="evenodd"/></svg>
+            Leader
+          </span>
+        </template>
+      </div>
+
+      <div class="scr px-4 py-4 space-y-5 pb-8">
+
+        <!-- Competitive challenge note -->
+        <div class="bg-blue-500/8 border border-blue-500/15 rounded-2xl p-4 flex items-start gap-3">
+          <svg class="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+          <p class="text-blue-400 text-xs leading-relaxed">Hybrid validation is active because this is a <strong>Competitive</strong> challenge. Casual challenges use standard self-reporting.</p>
+        </div>
+
+        <!-- Read-only banner for non-leaders -->
+        <template x-if="currentRole !== 'leader'">
+          <div class="bg-[#252525] border border-[#333] rounded-2xl p-4 flex items-start gap-3">
+            <svg class="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+            <p class="text-gray-500 text-xs leading-relaxed">Only the <strong class="text-gray-300">challenge leader</strong> can change these settings. You are viewing them in read-only mode.</p>
+          </div>
+        </template>
+
+        <!-- Validation config section -->
+        <div>
+          <div class="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">AI Validation</div>
+
+          <!-- AI deny toggle -->
+          <div class="bg-[#1A1A1A] rounded-2xl p-4 mb-2" :class="currentRole !== 'leader' ? 'opacity-50' : ''">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1">
+                <div class="text-white text-sm font-semibold mb-0.5">Allow AI to deny check-ins</div>
+                <div class="text-gray-500 text-xs leading-relaxed">
+                  <template x-if="settings.aiDenyEnabled">
+                    <span>AI can mark check-ins as <span class="text-[#F44336]">Denied</span> when clearly invalid. Denial is final.</span>
+                  </template>
+                  <template x-if="!settings.aiDenyEnabled">
+                    <span>AI can only output <span class="text-[#4CAF50]">Accepted</span> or <span class="text-[#FFC107]">Needs Review</span>. No automatic denials.</span>
+                  </template>
+                </div>
+              </div>
+              <label class="sw flex-shrink-0 mt-0.5" :class="currentRole !== 'leader' ? 'pointer-events-none' : ''">
+                <input type="checkbox" x-model="settings.aiDenyEnabled" :disabled="currentRole !== 'leader'" />
+                <span class="sw-track"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Peer voting section -->
+        <div>
+          <div class="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">Peer Voting</div>
+
+          <!-- Approval threshold -->
+          <div class="bg-[#1A1A1A] rounded-2xl p-4 mb-2" :class="currentRole !== 'leader' ? 'opacity-50' : ''">
+            <div class="flex items-center justify-between mb-1">
+              <div class="text-white text-sm font-semibold">Approval threshold</div>
+              <span class="text-[#E84545] text-sm font-bold" x-text="settings.approvalThreshold + '%'"></span>
+            </div>
+            <p class="text-gray-500 text-xs mb-3 leading-relaxed">Minimum % of "Valid" votes needed to approve a check-in. Below this = denied.</p>
+            <input type="range" min="50" max="100" step="5" x-model="settings.approvalThreshold" class="w-full"
+                   :disabled="currentRole !== 'leader'" :class="currentRole !== 'leader' ? 'pointer-events-none' : ''" />
+            <div class="flex justify-between text-gray-700 text-xs mt-1">
+              <span>50% (lenient)</span>
+              <span>100% (strict)</span>
+            </div>
+          </div>
+
+          <!-- Quorum -->
+          <div class="bg-[#1A1A1A] rounded-2xl p-4 mb-2" :class="currentRole !== 'leader' ? 'opacity-50' : ''">
+            <div class="flex items-center justify-between mb-1">
+              <div class="text-white text-sm font-semibold">Voting quorum</div>
+              <span class="text-[#E84545] text-sm font-bold" x-text="settings.quorum + '%'"></span>
+            </div>
+            <p class="text-gray-500 text-xs mb-3 leading-relaxed">% of group members required to vote for the result to count. If not met, check-in is automatically approved.</p>
+            <input type="range" min="20" max="100" step="10" x-model="settings.quorum" class="w-full"
+                   :disabled="currentRole !== 'leader'" :class="currentRole !== 'leader' ? 'pointer-events-none' : ''" />
+            <div class="flex justify-between text-gray-700 text-xs mt-1">
+              <span>20%</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          <!-- Voting window -->
+          <div class="bg-[#1A1A1A] rounded-2xl p-4" :class="currentRole !== 'leader' ? 'opacity-50' : ''">
+            <div class="flex items-center justify-between mb-1">
+              <div class="text-white text-sm font-semibold">Voting window</div>
+              <span class="text-[#E84545] text-sm font-bold" x-text="settings.votingWindow + 'h'"></span>
+            </div>
+            <p class="text-gray-500 text-xs mb-3 leading-relaxed">How long peer voting stays open for each flagged check-in.</p>
+            <div class="flex gap-2">
+              <template x-for="h in [24, 48, 72]" :key="h">
+                <button @click="currentRole === 'leader' && (settings.votingWindow = h)"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                        :class="[
+                          settings.votingWindow == h ? 'bg-[#E84545] text-white' : 'bg-[#252525] text-gray-500',
+                          currentRole === 'leader' ? 'hover:text-gray-300' : 'pointer-events-none cursor-default'
+                        ]"
+                        x-text="h + 'h'"></button>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leader section -->
+        <div>
+          <div class="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">Challenge Leader</div>
+          <div class="bg-[#1A1A1A] rounded-2xl p-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-[#E84545] flex items-center justify-center text-white font-bold shadow shadow-red-900/40">U</div>
+              <div class="flex-1">
+                <div class="text-white text-sm font-semibold">You (challenge creator)</div>
+                <div class="text-gray-500 text-xs mt-0.5">Receives notifications for tie votes and casts the deciding vote</div>
+              </div>
+              <span class="bg-[#E84545]/15 text-[#E84545] text-xs px-2.5 py-1 rounded-full font-medium border border-[#E84545]/20">Leader</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tie breaking rule note -->
+        <div class="bg-[#1A1A1A] rounded-2xl p-4 border border-[#2a2a2a]">
+          <div class="text-gray-400 text-xs font-semibold mb-2">Tie Breaking Rule</div>
+          <p class="text-gray-500 text-xs leading-relaxed">A tie occurs when exactly 50% vote Valid and 50% vote Not Valid. The challenge leader receives a notification and casts the final deciding vote. The check-in stays pending (and does not count toward the leaderboard) until the leader acts.</p>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end phone frame -->
+
+  <!-- Helper tip below phone -->
+  <div class="text-center max-w-sm">
+    <p class="text-gray-700 text-xs leading-relaxed">Tap any activity card to view full validation details. Use the role switcher above to explore different perspectives.</p>
+  </div>
+
+  <!-- ====== ALPINE.JS APP ====== -->
+  <script>
+    function app() {
+      return {
+        currentScreen: 'feed',
+        currentRole: 'leader',
+        selectedActivityId: null,
+        newCheckin: { title: '', description: '' },
+        tutorialStep: 1,
+
+        settings: {
+          aiDenyEnabled: true,
+          approvalThreshold: 60,
+          quorum: 50,
+          votingWindow: 48
+        },
+
+        roleDesc: {
+          submitter: 'The person who posted — sees voting progress but cannot vote on their own check-in',
+          voter: 'A regular challenge participant — can vote on flagged check-ins anonymously',
+          leader: 'The challenge creator — resolves tied votes with a final deciding vote'
+        },
+
+        activities: [
+          // ── TODAY (most recent first) ──
+          {
+            id: 4,
+            title: 'Evening Yoga',
+            image: 'images/evening_yoga.PNG',
+            user: { name: 'Sam', avatarColor: '#9C27B0', face: '🧘' },
+            time: '9:15 pm',
+            day: 'Today',
+            activityType: 'Yoga',
+            duration: '1h 30min',
+            distance: null,
+            description: 'Restorative yoga session at home',
+            hasImage: true,
+            feedStatus: 'peer_accepted',
+            aiResult: {
+              summary: 'Activity and duration match challenge rules, but image resolution was insufficient for automated verification.',
+              checks: [
+                { label: 'Activity matched "Yoga" challenge category', passed: true },
+                { label: 'Duration met 1h minimum — 1h 30min logged', passed: true },
+                { label: 'Image resolution too low to verify activity context', passed: false, detail: 'Could not identify yoga mats or setting from blurry image.' }
+              ]
+            },
+            peerVoting: {
+              status: 'resolved',
+              validVotes: 5,
+              invalidVotes: 1,
+              totalVoters: 8,
+              deadline: 'Mar 25, 2026 9:15 PM',
+              resolvedDate: 'Mar 25, 2026',
+              currentUserVoted: true
+            },
+            leaderDecision: null,
+            comments: []
+          },
+          {
+            id: 2,
+            title: '3h of Gym',
+            image: 'images/3h_of_gym.PNG',
+            user: { name: 'You', avatarColor: '#E84545', face: '😤' },
+            time: '8:27 pm',
+            day: 'Today',
+            activityType: 'Gym Training',
+            duration: '3 hrs',
+            distance: null,
+            description: 'Full upper body workout session',
+            hasImage: true,
+            feedStatus: 'ai_denied',
+            aiResult: {
+              summary: 'Multiple inconsistencies found. Image and device data do not support the described activity.',
+              checks: [
+                { label: 'Activity tagged as "Gym Training" matches challenge category', passed: true },
+                { label: 'Duration logged under 1h minimum requirement', passed: false, detail: 'Device data shows only 22 min of active movement recorded.' },
+                { label: 'No connected device data available to confirm consistency', passed: false, detail: 'Apple Watch was not synced at time of submission.' },
+                { label: 'Image matches gym or workout context', passed: false, detail: 'Image shows a restaurant environment, not a gym.' }
+              ]
+            },
+            peerVoting: null,
+            leaderDecision: null,
+            comments: []
+          },
+          {
+            id: 3,
+            title: '10 KM Run',
+            image: 'images/10_km_run.PNG',
+            user: { name: 'Alex', avatarColor: '#3B82F6', face: '😄' },
+            time: '7:36 pm',
+            day: 'Today',
+            activityType: 'Running',
+            duration: '1h 15min',
+            distance: '10 km',
+            description: 'Morning run along the river, felt great!',
+            hasImage: true,
+            feedStatus: 'voting_open',
+            aiResult: {
+              summary: 'Description and device data are consistent, but the attached image could not be verified as matching a running activity.',
+              checks: [
+                { label: 'Activity matched "Running" challenge category', passed: true },
+                { label: 'Duration met 1h minimum — 1h 15min logged', passed: true },
+                { label: 'Fitness device confirmed 10.3 km route at consistent pace', passed: true },
+                { label: 'Image matches running activity context', passed: false, detail: 'Image does not clearly show a running route or outdoor activity context.' }
+              ]
+            },
+            peerVoting: {
+              status: 'open',
+              validVotes: 3,
+              invalidVotes: 2,
+              totalVoters: 8,
+              deadline: 'Mar 27, 2026 7:36 PM',
+              resolvedDate: null,
+              currentUserVoted: false
+            },
+            leaderDecision: null,
+            comments: [
+              { user: 'Alex', text: "I forgot to take a photo mid-run — this is from right after I finished!", time: '7:41 pm' },
+              { user: 'Sam', text: 'Can confirm, we ran together this morning!', time: '7:53 pm' }
+            ]
+          },
+          {
+            id: 1,
+            title: 'Quick Run',
+            image: 'images/quick_run.PNG',
+            user: { name: 'You', avatarColor: '#E84545', face: '😤' },
+            time: '5:11 pm',
+            day: 'Today',
+            activityType: 'Running',
+            duration: '45 min',
+            distance: '5.2 km',
+            description: 'Evening jog through the park',
+            hasImage: true,
+            feedStatus: 'ai_accepted',
+            aiResult: {
+              summary: 'All checks passed. Activity confirmed as valid.',
+              checks: [
+                { label: 'Activity matched the "Running" challenge category', passed: true },
+                { label: 'Duration met 30 min minimum — 45 min logged', passed: true },
+                { label: 'Fitness data from connected device confirmed consistency', passed: true },
+                { label: 'Image matches running activity context', passed: true }
+              ]
+            },
+            peerVoting: null,
+            leaderDecision: null,
+            comments: []
+          },
+          // ── YESTERDAY (most recent first) ──
+          {
+            id: 6,
+            title: 'HIIT Session',
+            image: 'images/hiit.PNG',
+            user: { name: 'Alex', avatarColor: '#3B82F6', face: '😄' },
+            time: '12:30 pm',
+            day: 'Yesterday',
+            activityType: 'HIIT',
+            duration: '45 min',
+            distance: null,
+            description: 'Outdoor HIIT circuit in the park',
+            hasImage: true,
+            feedStatus: 'leader_accepted',
+            aiResult: {
+              summary: 'Duration and heart rate data are consistent, but the park image is ambiguous for HIIT classification.',
+              checks: [
+                { label: 'Activity matched "HIIT" challenge category', passed: true },
+                { label: 'Duration met 30 min minimum — 45 min logged', passed: true },
+                { label: 'Device data shows elevated heart rate throughout session', passed: true },
+                { label: 'Image context ambiguous for HIIT activity', passed: false, detail: 'Cannot conclusively verify active HIIT workout from park bench image alone.' }
+              ]
+            },
+            peerVoting: {
+              status: 'tie_resolved',
+              validVotes: 4,
+              invalidVotes: 4,
+              totalVoters: 10,
+              deadline: 'Mar 23, 2026 12:30 PM',
+              resolvedDate: 'Mar 23, 2026',
+              currentUserVoted: true
+            },
+            leaderDecision: 'valid',
+            comments: []
+          },
+          {
+            id: 5,
+            title: 'Morning Swim',
+            image: 'images/swim.PNG',
+            user: { name: 'You', avatarColor: '#E84545', face: '😤' },
+            time: '6:45 am',
+            day: 'Yesterday',
+            activityType: 'Swimming',
+            duration: '1h',
+            distance: '2 km',
+            description: 'Lap swimming at local pool, 40 lengths',
+            hasImage: true,
+            feedStatus: 'tie_pending',
+            aiResult: {
+              summary: 'Description matches challenge rules, but no device data was available and the image shows a locker room rather than the pool.',
+              checks: [
+                { label: 'Activity matched "Swimming" challenge category', passed: true },
+                { label: 'Duration met 1h minimum requirement', passed: true },
+                { label: 'No connected fitness device data available', passed: false, detail: 'Could not verify activity via device sync.' },
+                { label: 'Image does not show swimming context', passed: false, detail: 'Image shows locker room — pool or swimming activity not visible.' }
+              ]
+            },
+            peerVoting: {
+              status: 'tie',
+              validVotes: 3,
+              invalidVotes: 3,
+              totalVoters: 8,
+              deadline: 'Mar 24, 2026 6:45 AM',
+              resolvedDate: 'Mar 24, 2026',
+              currentUserVoted: true
+            },
+            leaderDecision: null,
+            comments: [
+              { user: 'You', text: "Pool doesn't allow phones on the deck. The locker room photo shows my membership card — I was definitely there.", time: '7:02 am' }
+            ]
+          }
+        ],
+
+        get selectedActivity() {
+          return this.activities.find(a => a.id === this.selectedActivityId) ?? null;
+        },
+
+        get feedGroups() {
+          const order = ['Today', 'Yesterday'];
+          const map = {};
+          for (const act of this.activities) {
+            if (!map[act.day]) map[act.day] = [];
+            map[act.day].push(act);
+          }
+          return order.filter(d => map[d]).map(d => ({ day: d, items: map[d] }));
+        },
+
+        navigateTo(screen, activityId = null) {
+          this.selectedActivityId = activityId;
+          this.currentScreen = screen;
+        },
+
+        goBack() {
+          this.currentScreen = 'feed';
+        },
+
+        castVote(id, type) {
+          const a = this.activities.find(x => x.id === id);
+          if (!a || !a.peerVoting || a.peerVoting.currentUserVoted) return;
+          type === 'valid' ? a.peerVoting.validVotes++ : a.peerVoting.invalidVotes++;
+          a.peerVoting.currentUserVoted = true;
+        },
+
+        leaderDecide(id, decision) {
+          const a = this.activities.find(x => x.id === id);
+          if (!a) return;
+          a.leaderDecision = decision;
+          a.feedStatus = decision === 'valid' ? 'leader_accepted' : 'leader_denied';
+        },
+
+        submitCheckin() {
+          if (!this.newCheckin.title.trim()) return;
+          this.activities.unshift({
+            id: Date.now(),
+            title: this.newCheckin.title,
+            image: 'https://picsum.photos/seed/new' + Date.now() % 100 + '/600/600',
+            user: { name: 'You', avatarColor: '#E84545', face: '😤' },
+            time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase(),
+            day: 'Today',
+            activityType: 'Activity',
+            duration: '1h',
+            distance: null,
+            description: this.newCheckin.description,
+            hasImage: false,
+            isMocked: true,
+            feedStatus: 'ai_accepted',
+            aiResult: {
+              summary: 'All checks passed. Activity confirmed.',
+              checks: [
+                { label: 'Activity matches challenge category', passed: true },
+                { label: 'Duration meets minimum requirements', passed: true },
+                { label: 'Submission recorded successfully', passed: true }
+              ]
+            },
+            peerVoting: null,
+            leaderDecision: null,
+            comments: []
+          });
+          this.newCheckin = { title: '', description: '' };
+          this.currentScreen = 'feed';
+        }
+      };
+    }
+  </script>
+</body>
+</html>
